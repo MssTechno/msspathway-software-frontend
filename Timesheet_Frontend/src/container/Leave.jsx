@@ -103,7 +103,7 @@ function Leave() {
       console.log("Success:", data);
 
       alert("Leave Applied Successfully ✅");
-
+      window.dispatchEvent(new Event("timesheetSubmitted"));
       // Reset Form
       setOpen(false);
       setLeaveType("");

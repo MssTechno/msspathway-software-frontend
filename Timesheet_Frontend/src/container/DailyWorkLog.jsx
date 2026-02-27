@@ -491,7 +491,7 @@ function DailyWorkLog({ selectedDate }) {
             {!submitted && !isWeekend && (
               <div className="flex gap-3 self-end sm:self-auto">
                 <button onClick={() => editEntry(i)} className="text-gray-400 hover:text-gray-600 transition" title="Edit"><Edit size={18} /></button>
-                <button onClick={() => deleteEntry(i)} className="text-gray-400 hover:text-gray-600 transition" title="Delete"><Trash size={18} /> </button>
+                <button onClick={() => {setDeleteIndex(i); setShowDeleteModal(true);}} className="text-gray-400 hover:text-gray-600 transition" title="Delete"><Trash size={18} /> </button>
               </div>
             )}
           </div>

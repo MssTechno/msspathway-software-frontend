@@ -17,6 +17,14 @@ function Calender({ selectedDate, onDateSelect }) {
     fetchCalendarData();
   }, [month, year]);
 
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     fetchCalendarData();
+  //   }, 10000); // every 10 seconds
+
+  //   return () => clearInterval(interval);
+  // }, [month, year]);
+
   useEffect(() => {
     const refreshCalendar = () => {
       fetchCalendarData();
@@ -91,9 +99,6 @@ function Calender({ selectedDate, onDateSelect }) {
 
   const prevMonth = () => setCurrentDate(new Date(year, monthIndex - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, monthIndex + 1, 1));
-
-  // const dateKey = (d) =>
-  //   `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
   const dateKey = (d) => {
     const day = String(d.getDate()).padStart(2, "0");
@@ -182,8 +187,11 @@ function Calender({ selectedDate, onDateSelect }) {
             bg = "bg-gray-100 border-gray-400 text-gray-400";
           } else if (value === "leave") {
             bg = "bg-red-50 border-red-200 text-red-600";
-            label = "Hol";
-          } else if (Number(value) >= 8) {
+            label = "leave";
+          }else if (value === "public_holiday") {
+            bg = "bg-blue-100 border-blue-300 text-blue-700";
+            label = "public hol";
+          }else if (Number(value) >= 8) {
             bg = "bg-green-50 border-green-200 text-green-700";
             label = `${value}h`;
           } else if (Number(value) > 0) {
