@@ -8,10 +8,10 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
 
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [invalidPopup, setInvalidPopup] = useState(false);
 
   const navigate = useNavigate();
 
@@ -62,24 +62,28 @@ function Login() {
         }
       );
 
-      console.log("Login Success:", response.data.access_token);
+      console.log("Login Success:", response.data);
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("user_id");
 
       // Optional: store token if API returns it
       if (response.data.access_token) {
         localStorage.setItem("token", response.data.access_token);
       }
 
+      if (response.data.user_id) {
+        localStorage.setItem("user_id", response.data.user_id);
+      } else if (response.data.user?.id) {
+        localStorage.setItem("user_id", response.data.user.id);
+      }
+
       navigate("/timesheet");
 
     } catch (error) {
         console.error("Login Error:", error);
-
-        if (error.response && error.response.data) {
-          setError(error.response.data.message || "Invalid credentials");
-        } else {
-          setError("Something went wrong. Please try again.");
-        }
-      }
+        setInvalidPopup(true);
+    }
   };
 
   return (
@@ -104,7 +108,7 @@ function Login() {
         </p>
 
         {/* Email */}
-        <div className={`flex items-center border rounded-md mb-1 px-3 ${
+        <div className={`flex items-center border rounded-lg mb-3 px-3 ${
           emailError ? "border-red-500" : ""
         }`}>
           <FiMail className="text-gray-400 mr-2 shrink-0" />
@@ -127,7 +131,7 @@ function Login() {
         )}
 
         {/* Password */}
-        <div className={`flex items-center border rounded-md mb-1 px-3 ${
+        <div className={`flex items-center border rounded-lg mb-1 px-3 ${
           passwordError ? "border-red-500" : ""
         }`}>
           <FiLock className="text-gray-400 mr-2 shrink-0" />
@@ -165,7 +169,7 @@ function Login() {
 
         <button
           type="submit"
-          className="w-full py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-sm"
+          className="w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
         >
           Sign In
         </button>
@@ -185,6 +189,27 @@ function Login() {
 
             <button
               onClick={() => setShowPopup(false)}
+              className="mt-5 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Invalid Credentials Popup */}
+      {invalidPopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-4">
+          <div className="bg-white w-full max-w-xs sm:max-w-[320px] p-5 sm:p-6 rounded-lg shadow-lg text-center">
+            <h3 className="text-lg font-semibold mb-2 text-red-600">
+              Login Failed
+            </h3>
+            <p className="text-gray-600 text-sm">
+              Invalid email or password. Please try again.
+            </p>
+
+            <button
+              onClick={() => setInvalidPopup(false)}
               className="mt-5 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
             >
               OK

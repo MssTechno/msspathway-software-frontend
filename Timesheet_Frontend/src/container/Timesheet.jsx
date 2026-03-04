@@ -6,7 +6,12 @@ import Leave from "./Leave";
 
 function Timesheet() {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [refresh, setRefresh] = useState(0);
+  const [dateStatus, setDateStatus] = useState(null);
+
+  const handleDateSelect = ({ date, status }) => {
+    setSelectedDate(date);
+    setDateStatus(status);
+  };
 
   return (
     <div className="w-full">
@@ -33,7 +38,7 @@ function Timesheet() {
         ">
           <Calender
             selectedDate={selectedDate}
-            onDateSelect={setSelectedDate}
+            onDateSelect={handleDateSelect}
           />
           <Leave />
           <Guideline />
@@ -47,7 +52,7 @@ function Timesheet() {
           md:space-y-5
           lg:space-y-6
         ">
-          <DailyWorkLog selectedDate={selectedDate} />
+          <DailyWorkLog selectedDate={selectedDate} isLeave={dateStatus === "leave"} isPublicHoliday={dateStatus === "publicholiday"} />
         </div>
       </div>
     </div>

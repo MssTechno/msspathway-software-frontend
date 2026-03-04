@@ -11,6 +11,16 @@ function Leave() {
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [popupMessage, setPopupMessage] = useState("");
+  const [popupType, setPopupType] = useState("success"); // success | error
+  const [showPopup, setShowPopup] = useState(false);
+
+  const openPopup = (message, type = "success") => {
+    setPopupMessage(message);
+    setPopupType(type);
+    setShowPopup(true);
+  };
+
   /* Listen to Apply Leave button click */
   useEffect(() => {
     const handler = (e) => {
@@ -34,14 +44,14 @@ function Leave() {
 
   const applyLeave = async () => {
     if (!leaveType || !reason) {
-      alert("Please fill all required fields");
+      openPopup("Please fill all required fields", "error");
       return;
     }
 
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Bad token.");
+      openPopup("Bad token.", "error");
       return;
     }
 
@@ -57,7 +67,7 @@ function Leave() {
     // Single Day Leave
     if (leaveType === "single") {
       if (!singleDate) {
-        alert("Please select date");
+        openPopup("Please select date", "error");
         return;
       }
       payload.leave_date = formatDate(singleDate);
@@ -66,12 +76,12 @@ function Leave() {
     // Multiple Days Leave
     if (leaveType === "multiple") {
       if (!from || !to) {
-        alert("Please select start and end date");
+        openPopup("Please select start and end date", "error");
         return;
       }
 
       if (to < from) {
-        alert("End date cannot be before start date");
+        openPopup("End date cannot be before start date", "error");
         return;
       }
 
@@ -102,7 +112,7 @@ function Leave() {
       const data = await response.json();
       console.log("Success:", data);
 
-      alert("Leave Applied Successfully ✅");
+      openPopup("Leave Applied Successfully ✅", "success");
       window.dispatchEvent(new Event("timesheetSubmitted"));
       // Reset Form
       setOpen(false);
@@ -113,160 +123,190 @@ function Leave() {
       setReason("");
     } catch (error) {
       console.error("Apply Leave Error:", error);
-      alert("Something went wrong ❌");
+      openPopup("Something went wrong ❌", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md">
-        <h3 className="font-semibold text-lg mb-4">
-          Apply for Leave
-        </h3>
+    <>
+      {open &&(
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 className="font-semibold text-lg mb-4">
+              Apply for Leave
+            </h3>
 
-        {/* Radio Buttons */}
-        <div className="flex gap-6 mb-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              value="single"
-              checked={leaveType === "single"}
-              onChange={() => setLeaveType("single")}
-            />
-            1 Day Leave
-          </label>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              value="multiple"
-              checked={leaveType === "multiple"}
-              onChange={() => setLeaveType("multiple")}
-            />
-            Multiple Days Leave
-          </label>
-        </div>
-
-        {leaveType && (
-          <div className="space-y-4">
-
-            {/* Single Day */}
-            {leaveType === "single" && (
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Date
-                </label>
-                {/* <input
-                  type="date"
-                  value={singleDate}
-                  onChange={(e) => setSingleDate(e.target.value)}
-                  className="w-full border p-2 rounded text-sm"
-                /> */}
-                
-                <DatePicker
-                  placeholderText="dd-mm-yyyy"
-                  selected={singleDate}
-                  onChange={(date) => setSingleDate(date)}
-                  dateFormat="dd-MM-yyyy"
-                  wrapperClassName="w-full"
-                  className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-green-600 outline-none"
-                  shouldCloseOnSelect={true}
-                  closeOnScroll={false}
-                  onClickOutside={(e) => e.preventDefault()}
+            {/* Radio Buttons */}
+            <div className="flex gap-6 mb-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  value="single"
+                  checked={leaveType === "single"}
+                  onChange={() => setLeaveType("single")}
                 />
+                1 Day Leave
+              </label>
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  value="multiple"
+                  checked={leaveType === "multiple"}
+                  onChange={() => setLeaveType("multiple")}
+                />
+                Multiple Days Leave
+              </label>
+            </div>
+
+            {leaveType && (
+              <div className="space-y-4">
+
+                {/* Single Day */}
+                {leaveType === "single" && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Date
+                    </label>
+                    {/* <input
+                      type="date"
+                      value={singleDate}
+                      onChange={(e) => setSingleDate(e.target.value)}
+                      className="w-full border p-2 rounded text-sm"
+                    /> */}
+                    
+                    <DatePicker
+                      placeholderText="dd-mm-yyyy"
+                      selected={singleDate}
+                      onChange={(date) => setSingleDate(date)}
+                      dateFormat="dd-MM-yyyy"
+                      wrapperClassName="w-full"
+                      className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-green-600 outline-none"
+                      shouldCloseOnSelect={true}
+                      closeOnScroll={false}
+                      onClickOutside={(e) => e.preventDefault()}
+                    />
+                  </div>
+                )}
+
+                {/* Multiple Days */}
+                {leaveType === "multiple" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Start Date
+                      </label>
+                      {/* <input
+                        type="date"
+                        value={from}
+                        onChange={(e) => setFrom(e.target.value)}
+                        className="w-full border p-2 rounded text-sm"
+                      /> */}
+
+                      <DatePicker
+                        placeholderText="dd-mm-yyyy"
+                        selected={from}
+                        onChange={(date) => setFrom(date)}
+                        dateFormat="dd-MM-yyyy"
+                        wrapperClassName="w-full"
+                        className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-green-600 outline-none"
+                        shouldCloseOnSelect={true}
+                        closeOnScroll={false}
+                        onClickOutside={(e) => e.preventDefault()}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        End Date
+                      </label>
+                      {/* <input
+                        type="date"
+                        value={to}
+                        onChange={(e) => setTo(e.target.value)}
+                        className="w-full border p-2 rounded text-sm"
+                      /> */}
+
+                      <DatePicker
+                        placeholderText="dd-mm-yyyy"
+                        selected={to}
+                        onChange={(date) => setTo(date)}
+                        dateFormat="dd-MM-yyyy"
+                        wrapperClassName="w-full"
+                        className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-green-600 outline-none"
+                        shouldCloseOnSelect={true}
+                        closeOnScroll={false}
+                        onClickOutside={(e) => e.preventDefault()}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    rows={3}
+                    className="w-full border p-2 rounded text-sm"
+                  />
+                </div>
               </div>
             )}
 
-            {/* Multiple Days */}
-            {leaveType === "multiple" && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Start Date
-                  </label>
-                  {/* <input
-                    type="date"
-                    value={from}
-                    onChange={(e) => setFrom(e.target.value)}
-                    className="w-full border p-2 rounded text-sm"
-                  /> */}
+            <div className="flex justify-end gap-4 mt-6">
+              <button
+                onClick={() => setOpen(false)}
+                className="text-sm text-gray-500"
+              >
+                Cancel
+              </button>
 
-                  <DatePicker
-                    placeholderText="dd-mm-yyyy"
-                    selected={from}
-                    onChange={(date) => setFrom(date)}
-                    dateFormat="dd-MM-yyyy"
-                    wrapperClassName="w-full"
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-green-600 outline-none"
-                    shouldCloseOnSelect={true}
-                    closeOnScroll={false}
-                    onClickOutside={(e) => e.preventDefault()}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    End Date
-                  </label>
-                  {/* <input
-                    type="date"
-                    value={to}
-                    onChange={(e) => setTo(e.target.value)}
-                    className="w-full border p-2 rounded text-sm"
-                  /> */}
-
-                  <DatePicker
-                    placeholderText="dd-mm-yyyy"
-                    selected={to}
-                    onChange={(date) => setTo(date)}
-                    dateFormat="dd-MM-yyyy"
-                    wrapperClassName="w-full"
-                    className="w-full border p-2 rounded text-sm focus:ring-2 focus:ring-green-600 outline-none"
-                    shouldCloseOnSelect={true}
-                    closeOnScroll={false}
-                    onClickOutside={(e) => e.preventDefault()}
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Description
-              </label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={3}
-                className="w-full border p-2 rounded text-sm"
-              />
+              <button
+                onClick={applyLeave}
+                disabled={!leaveType || loading}
+                className="px-4 py-2 rounded text-sm bg-green-700 text-white"
+              >
+                {loading ? "Applying..." : "Apply Leave"}
+              </button>
             </div>
           </div>
-        )}
-
-        <div className="flex justify-end gap-4 mt-6">
-          <button
-            onClick={() => setOpen(false)}
-            className="text-sm text-gray-500"
-          >
-            Cancel
-          </button>
-
-          <button
-            onClick={applyLeave}
-            disabled={!leaveType || loading}
-            className="px-4 py-2 rounded text-sm bg-green-700 text-white"
-          >
-            {loading ? "Applying..." : "Apply Leave"}
-          </button>
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* Popup Notification */}
+
+      {showPopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-4 z-50">
+          <div className="bg-white w-full max-w-xs p-6 rounded-lg shadow-lg text-center">
+
+            <h3
+              className={`text-lg font-semibold mb-2 ${popupType === "error" ? "text-red-600" : "text-green-600"
+                }`}
+            >
+              {popupType === "error" ? "Error" : "Success"}
+            </h3>
+
+            <p className="text-gray-600 text-sm">
+              {popupMessage}
+            </p>
+
+            <button
+              onClick={() => setShowPopup(false)}
+              className="mt-5 px-6 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 text-sm"
+            >
+              OK
+            </button>
+
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

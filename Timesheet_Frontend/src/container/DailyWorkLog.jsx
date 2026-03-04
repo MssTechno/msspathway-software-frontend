@@ -1,10 +1,10 @@
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Save, Calendar as CalendarIcon, Edit, Trash } from "lucide-react";
 
 const MAX_ENTRIES = 5;
 const BASE_URL = "https://timesheet-api-790373899641.asia-south1.run.app/timesheet";
 
-function DailyWorkLog({ selectedDate }) {
+function DailyWorkLog({ selectedDate, isLeave, isPublicHoliday }) {
   if (!selectedDate) return null;
 
   const userId = localStorage.getItem("user_id");
@@ -35,6 +35,18 @@ function DailyWorkLog({ selectedDate }) {
   const [deleteIndex, setDeleteIndex] = useState(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
 
+  const [popupMessage, setPopupMessage] = useState("");
+  const [popupType, setPopupType] = useState("success"); // success | error
+  const [showPopup, setShowPopup] = useState(false);
+
+  const isDisabled = isWeekend || isLeave || isPublicHoliday || submitted;
+
+  const openPopup = (message, type) => {
+    setPopupMessage(message);
+    setPopupType(type);
+    setShowPopup(true);
+  };
+
   /*FETCH DRAFTS BY DATE*/
   useEffect(() => {
     const fetchDrafts = async () => {
@@ -55,6 +67,8 @@ function DailyWorkLog({ selectedDate }) {
         if (!response.ok) throw new Error("Failed to fetch drafts");
 
         const data = await response.json();
+        console.log("Logged in user:", userId);
+        console.log("Draft API response:", data);
         console.log("Draft fetch:", data);
 
         const formatted = data.map((item) => ({
@@ -70,19 +84,26 @@ function DailyWorkLog({ selectedDate }) {
             item.end_time?.slice(0, 5),
             item.break_time
           ),
-          status: "Draft",
+          status: item.status || "Draft",
         }));
 
         setEntries(formatted);
+        let isSubmitted = false;
 
-        const submittedKey = `submitted-${userId}-${dateKey}`;
-        const savedSubmitted = localStorage.getItem(submittedKey);
-
-        if (savedSubmitted === "true") {
-          setSubmitted(true);
-        } else {
-          setSubmitted(false);
+        if (data.length > 0) {
+          isSubmitted = data.some(
+            (item) => item.status?.toLowerCase() === "submitted"
+          );
+        } 
+        // If API returns empty after submission
+        const submittedFlag = localStorage.getItem(`submitted_${dateKey}`);
+        if (submittedFlag === "true") {
+          isSubmitted = true;
         }
+        
+
+        setSubmitted(isSubmitted);
+        
       } catch (error) {
         setEntries([]);
       }
@@ -106,11 +127,14 @@ function DailyWorkLog({ selectedDate }) {
   /*SAVE / UPDATE*/
   const saveLog = async (e) => {
     e.preventDefault();
-    if (submitted || isWeekend) return;
+    if (submitted){
+      openPopup("Day already submitted. No changes allowed ❌", "error");
+      return;
+    }
 
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("Invalid token");
+      openPopup("Invalid token ❌", "error");
       return;
     }
 
@@ -121,7 +145,7 @@ function DailyWorkLog({ selectedDate }) {
       !formData.endTime ||
       !formData.description.trim()
     ) {
-      alert("Please fill mandatory fields");
+      openPopup("Please fill in all required fields ❌", "error");
       return;
     }
 
@@ -132,7 +156,7 @@ function DailyWorkLog({ selectedDate }) {
     );
 
     if (hours <= 0) {
-      alert("Invalid time range");
+      openPopup("End time must be after start time, and break time must be less than total time ❌", "error");
       return;
     }
 
@@ -212,9 +236,9 @@ function DailyWorkLog({ selectedDate }) {
       setFormData(emptyForm);
       setEditIndex(null);
 
-      alert(editIndex !== null ? "Timesheet updated successfully ✅" : "Timesheet saved successfully ✅");
+      openPopup(editIndex !== null ? "Timesheet updated successfully ✅" : "Timesheet saved successfully ✅", "success");
     } catch (error) {
-      alert("Error saving timesheet ❌");
+      openPopup("Error saving timesheet ❌", "error");
     } finally {
       setLoading(false);
     }
@@ -222,7 +246,7 @@ function DailyWorkLog({ selectedDate }) {
 
   /*DELETE*/
   const deleteEntry = async (index) => {
-    if (submitted || isWeekend) return;
+    if (submitted) return;
 
     const token = localStorage.getItem("token");
     const draftId = entries[index].draft_id;
@@ -244,16 +268,16 @@ function DailyWorkLog({ selectedDate }) {
       const updated = entries.filter((_, i) => i !== index);
       setEntries(updated);
 
-      alert("Timesheet Deleted ✅");
+      openPopup("Timesheet Deleted ✅", "success");
     } catch (error) {
       console.error("Delete error:", error);
-      alert("Delete failed ❌");
+      openPopup("Delete failed ❌", "error");
     }
   };
 
   /*SUBMIT DAY*/
   const submitDay = async () => {
-    if (isWeekend) return;
+    if (submitted) return;
 
     const token = localStorage.getItem("token");
 
@@ -279,21 +303,21 @@ function DailyWorkLog({ selectedDate }) {
 
       if (response.ok) {
         setSubmitted(true);
-        localStorage.setItem(`submitted-${userId}-${dateKey}`, "true");
-        alert("Day Submitted Successfully ✅");
+        //localStorage.setItem(`submitted_${dateKey}`, "true");
+        openPopup("Day Submitted Successfully ✅", "success");
         return;
       } else {
-        alert(data.details || "Submit failed ❌");
+        openPopup(data.details || data.message || "Submit failed ❌", "error");
       }
 
     } catch (error) {
       console.error("Submit error:", error);
-      alert("Submit failed ❌");
+      openPopup("Submit failed ❌", "error");
     }
   };
 
   const editEntry = (index) => {
-    if (submitted) return;
+    if (isDisabled) return;
     setFormData(entries[index]);
     setEditIndex(index);
   };
@@ -335,13 +359,14 @@ function DailyWorkLog({ selectedDate }) {
       </div>
 
       {/* FORM */}
-      <div className={`space-y-6 ${isWeekend ? "opacity-50 pointer-events-none" : ""}`}>
+      <div className={`space-y-6 ${isDisabled ? "opacity-50 pointer-events-none" : ""}`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Project Name
             </label>
             <input
+              disabled={isDisabled}
               value={formData.project}
               onChange={(e) =>
                 setFormData({ ...formData, project: e.target.value })
@@ -356,6 +381,7 @@ function DailyWorkLog({ selectedDate }) {
               Task Category
             </label>
             <input
+              disabled={isDisabled}
               value={formData.category}
               onChange={(e) =>
                 setFormData({ ...formData, category: e.target.value })
@@ -372,6 +398,7 @@ function DailyWorkLog({ selectedDate }) {
               Start Time
             </label>
             <input
+              disabled={isDisabled}
               type="time"
               value={formData.startTime}
               onChange={(e) =>
@@ -386,6 +413,7 @@ function DailyWorkLog({ selectedDate }) {
               End Time
             </label>
             <input
+              disabled={isDisabled}
               type="time"
               value={formData.endTime}
               onChange={(e) =>
@@ -400,6 +428,7 @@ function DailyWorkLog({ selectedDate }) {
               Break (min)
             </label>
             <input
+              disabled={isDisabled}
               placeholder="Break (min)"
               value={formData.breakTime}
               onChange={(e) =>
@@ -415,6 +444,7 @@ function DailyWorkLog({ selectedDate }) {
             Task Description
           </label>
           <textarea
+            disabled={isDisabled}
             rows={4}
             placeholder="What have you achieved today? *"
             value={formData.description}
@@ -428,7 +458,7 @@ function DailyWorkLog({ selectedDate }) {
       </div>
 
       {/* Actions */}
-      {!isWeekend && (
+      {!isDisabled && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-14 mt-8">
           {!submitted && (
             <button
@@ -463,6 +493,20 @@ function DailyWorkLog({ selectedDate }) {
         </div>
       )}
 
+      {isLeave && (
+        <div className="bg-green-50 border-l-4 border-green-600 text-black-700 p-4 mt-6" role="alert">
+          <p className="font-semibold">Leave Notice</p>
+          <p className="text-sm">You are on leave for this day. Timesheet entries cannot be added or edited.</p>
+        </div>
+      )}
+
+      {isPublicHoliday && (
+        <div className="bg-green-50 border-l-4 border-green-600 text-black-700 p-4 mt-6" role="alert">
+          <p className="font-semibold">Public Holiday Notice</p>
+          <p className="text-sm">This day is a public holiday. Timesheet entries cannot be added or edited.</p>
+        </div>
+      )}
+
       {/* LOGGED ACTIVITIES */}
       <div className="mt-8">
         <div className="flex justify-between mb-3">
@@ -488,7 +532,7 @@ function DailyWorkLog({ selectedDate }) {
               </div>
             </div>
 
-            {!submitted && !isWeekend && (
+            {!isDisabled && (
               <div className="flex gap-3 self-end sm:self-auto">
                 <button onClick={() => editEntry(i)} className="text-gray-400 hover:text-gray-600 transition" title="Edit"><Edit size={18} /></button>
                 <button onClick={() => {setDeleteIndex(i); setShowDeleteModal(true);}} className="text-gray-400 hover:text-gray-600 transition" title="Delete"><Trash size={18} /> </button>
@@ -503,8 +547,9 @@ function DailyWorkLog({ selectedDate }) {
           </div>
         )}
 
-        {!submitted && !isWeekend && entries.length > 0 && (
+        {!isDisabled && entries.length > 0 && (
           <button
+            disabled = {submitted}
             onClick={() => setShowSubmitModal(true)}
             className="bg-green-700 text-white px-6 py-3 rounded-xl mt-4 w-full hover:bg-green-800"
           >
@@ -560,6 +605,32 @@ function DailyWorkLog({ selectedDate }) {
                   Submit
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* COMMON POPUP */}
+        {showPopup && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-4 z-50">
+            <div className="bg-white w-full max-w-xs sm:max-w-[320px] p-5 sm:p-6 rounded-lg shadow-lg text-center">
+
+              <h3
+                className={`text-lg font-semibold mb-2 ${popupType === "error" ? "text-red-600" : "text-green-600"
+                  }`}
+              >
+                {popupType === "error" ? "Error" : "Success"}
+              </h3>
+
+              <p className="text-gray-600 text-sm">
+                {popupMessage}
+              </p>
+
+              <button
+                onClick={() => setShowPopup(false)}
+                className="mt-5 px-6 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 text-sm"
+              >
+                OK
+              </button>
             </div>
           </div>
         )}

@@ -62,20 +62,26 @@ function Calender({ selectedDate, onDateSelect }) {
       const data = await response.json();
       console.log("Calendar API Response:", data);
 
-      if (!data.date) {
-        console.error("API did not return array:", data);
-        setHoursMap({});
-        return;
-      }
+      // if (!data.date) {
+      //   console.error("API did not return array:", data);
+      //   setHoursMap({});
+      //   return;
+      // }
 
       /* Convert API object into simple hours map */
       const formattedMap = {};
 
-      Object.keys(data.date).forEach((key) => {
-        const entry = data.date[key];
+      const calendarData = data.date || {};
+
+      Object.entries(calendarData).forEach(([key, entry]) => {
+        if(!entry) return;
 
         if (entry.status === "leave") {
           formattedMap[key] = "leave";
+        } else if (entry.status === "pending") {
+          formattedMap[key] = "pending";
+        }else if (entry.status === "publicholiday") {
+          formattedMap[key] = "publicholiday";
         } else {
           formattedMap[key] = entry.hours || 0;
         }
@@ -185,16 +191,24 @@ function Calender({ selectedDate, onDateSelect }) {
 
           if (weekend) {
             bg = "bg-gray-100 border-gray-400 text-gray-400";
-          } else if (value === "leave") {
+          } 
+          else if (value === "leave") {
             bg = "bg-red-50 border-red-200 text-red-600";
             label = "leave";
-          }else if (value === "public_holiday") {
+          } 
+          else if (value === "pending") {
+            bg = "bg-gray-100 border-gray-400 text-gray-400";
+            label = "pending";
+          } 
+          else if (value === "publicholiday") {
             bg = "bg-blue-100 border-blue-300 text-blue-700";
             label = "public hol";
-          }else if (Number(value) >= 8) {
+          } 
+          else if (Number(value) >= 8) {
             bg = "bg-green-50 border-green-200 text-green-700";
             label = `${value}h`;
-          } else if (Number(value) > 0) {
+          } 
+          else if (Number(value) > 0) {
             bg = "bg-yellow-50 border-yellow-200 text-yellow-700";
             label = `${value}h`;
           }
@@ -202,7 +216,12 @@ function Calender({ selectedDate, onDateSelect }) {
           return (
             <div
               key={i}
-              onClick={() => onDateSelect(date)}
+              onClick={() =>
+                onDateSelect({
+                  date,
+                  status: value
+                })
+              }
               className={`flex flex-col items-center justify-center min-h-[64px] sm:min-h-[72px] rounded-lg border text-sm leading-none
                 ${bg}
                 ${selected ? "ring-2 ring-green-600" : ""}
